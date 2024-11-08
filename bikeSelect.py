@@ -57,7 +57,6 @@ class BikeSelect():
 
     - _select_bikes(self, budget, model_ids) -> df
 
-
     '''
 
     def __init__(self, database):
@@ -69,7 +68,7 @@ class BikeSelect():
         self.inventory = pd.read_sql('SELECT * FROM bicycle_inventory', self.conn, index_col=['id'])
         self.history = pd.read_sql('SELECT * FROM rental_hist', self.conn, index_col=['id'] )
     
-    def select(self, database, allocation, budget):
+    def select(self, allocation, budget):
         '''
         Overall select function (see above)
         Args:
@@ -128,11 +127,21 @@ class BikeSelect():
 
         cbar = ax.figure.colorbar(im,ax=ax, fraction=0.02, pad=0.04)
         cbar.set_label('Frequency of Usage')
-        ax.set(title='Rental frequency of bikes, by member and model', xlabel='Model ID - corresponds to each unique bike (not to be confused with bicycle ID, which corresponds to each actual bike in the inventory)', ylabel='Mmeber ID')
+
+        ax.set_title('Rental frequency of bikes, by member and model', fontsize=20)
+        ax.set_xlabel('Model ID - corresponds to each unique bike (not to be confused with bicycle ID, which corresponds to each actual bike in the inventory)', 
+                      fontsize=12)
+        ax.set_ylabel('Member ID', fontsize = 12)
+        
+        ax.set_xticks(range(len(grouped.columns)))
+        ax.set_xticklabels(grouped.columns)
+        
+        ax.set_yticks(range(len(grouped.index)))
+        ax.set_yticklabels(grouped.index)
 
         fig.tight_layout()
         plt.show()
-
+        
 
     
     ##############################################################
