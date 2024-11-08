@@ -144,8 +144,11 @@ class Database:
                 #loop through file and clean then insert each row into the table
                 for l in f:
                     clean_data = self._clean(table_name, l)
-                    value_holder = '(' + ('?,' * (len(clean_data)-1))  + '?)'
-                    self.cursor.execute(f'INSERT INTO {table_name} VALUES {value_holder}', clean_data)
+                    if clean_data is not None:
+                        value_holder = '(' + ('?,' * (len(clean_data)-1))  + '?)'
+                        self.cursor.execute(f'INSERT INTO {table_name} VALUES {value_holder}', clean_data)
+                    else:
+                        pass
 
                 self.connection.commit()
             print(f'{file_path} loaded into {table_name} successfully')
@@ -385,47 +388,92 @@ class Database:
         inputs_list = line.strip().replace(';',',').split(',')
         
         #add null value for bikes with no weekly rate
-        inputs_list = self._parse_weekly_rate(inputs_list) if table_name == 'bicycles' else inputs_list
+        if table_name == 'bicycles':
+            inputs_list = self._extract_weekly_rate(inputs_list)
+            inputs_list = self._replace_missing_brand(inputs_list)
+            inputs_list[4] = inputs_list[4].replace('£', '/day')
+            inputs_list[5] = inputs_list[5].replace('/', '-')
+        else:
+            inputs_list[1] = inputs_list[1].replace('/', '-')
+            inputs_list[2] = inputs_list[2].replace('/', '-')
+        
+        inputs_list = self._parse_dates(inputs_list, table_name)
 
-        clean=[]
-        for x in inputs_list:
-            x = x.replace('missing', 'NULL').lower() #replace missing values
-            x = x.replace('/','-') #format bad dates
-            x = self._parse_date(x)
-            
-            clean.append(x)
+        return inputs_list
 
-        return clean
-
-    def _parse_weekly_rate(self, line):
+    def _extract_weekly_rate(self, inputs_list):
         '''
         Adds a NULL value after the daily rate if no weekly rate is present
         Args:
         --------
         line (list): to check length of list
         '''
-        if len(line) == 8:
-            line.insert(5, 'NULL')
-        return line
+        if len(inputs_list) == 8:
+            inputs_list.insert(5, 'NULL')
+        return inputs_list
 
-    def _parse_date(self, x):
+    def _replace_missing_brand(self, inputs_list):
+        '''
+        Impute missing brand values. The brand directly relates to price.
+        Args:
+        -----------
+        inputs_list (list)
+        '''
+        match_brand_by_price = { '26' : 'giant',
+                                '27' : 'cannondale',
+                                '28' : 'trek',
+                                '29' : 'specialized',
+                                '30' : 'bianchi'}
+        
+        if inputs_list[1] == 'missing':
+            inputs_list[1] = match_brand_by_price.get(inputs_list[4][0:2])
+
+        return inputs_list 
+
+    def _parse_dates(self, inputs_list, table_name):
         '''
         Validate dates from a row of input data
         A date is invalid if
             it is after today
-            the return date is greater than the rent date?
         Args:
         -----------
         x (str): each item of the list as looped through in `_clean`
         '''
-        try:
-            #convert dates to date objects
-            date = datetime.strptime(x, '%Y/%m/%d')
+        if table_name == 'bicycles':
+            x = inputs_list[5]
+            try:
+                x.replace('/','-')
+                #convert dates to date objects
+                x = datetime.strptime(x, '%Y/%m/%d')
 
-            return 0 if date > date.today() else date
+                inputs_list[5] = x if x <= date.today() else None
+            
+            #if invalid date format - reassign date to start of business
+            except ValueError:
+                inputs_list[5] = datetime.strptime('2021/01/01','%Y/%m/%d')
+
+        if table_name == 'rental_hist':
+            x = inputs_list[1]
+            y = inputs_list[2]
+            try:
+                #convert dates to date objects
+                rent_date = datetime.strptime(x, '%Y/%m/%d')
+                return_date = datetime.strptime(y, '%Y/%m/%d')
+
+                #check return date is not before rent date
+                #if they are, swap them
+                if return_date < rent_date:
+                    rent_date, return_date = return_date, rent_date
                 
-        except ValueError: #dont need to change the non dates
-            return x
+                inputs_list[1] = rent_date if rent_date <= date.today() else None
+                inputs_list[2] = return_date if return_date <= date.today() else None
+            
+            #if invalid date format
+            except ValueError:
+                return None
+        
+        return inputs_list
+  
     
 
 ###########################################################################
@@ -435,12 +483,12 @@ class Database:
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database9.db')
+    database = Database('database-TEST.db')
 
-    # tables={'rental_hist': 'Rental_History.txt', 'bicycles': 'Bicycle_info.txt'}
-    # for name, path in tables.items():
-    #     database.create_table(name)
-    #     database.clean_load_files_to_table(name, path)
+    tables={'rental_hist': 'Rental_History.txt', 'bicycles': 'Bicycle_info.txt'}
+    for name, path in tables.items():
+        database.create_table(name)
+        database.clean_load_files_to_table(name, path)
 
     # database.normalise_database()
 
@@ -451,12 +499,12 @@ if __name__ == '__main__':
     # database.add_row(table='bicycle_models', values=(38, 'Bianchi','Electric Bike','Medium','30-day','null',1000,'no'))
 
         
-    dets = database.query('SELECT * FROM bicycle_models')
-    print(dets)
+    # dets = database.query('SELECT * FROM bicycle_models')
+    # print(dets)
 
-    spa = database.query('SELECT * FROM bicycle_inventory')
-    print(spa)
+    # spa = database.query('SELECT * FROM bicycle_inventory')
+    # print(spa)
 
-    clf = database.query('SELECT * FROM rental_hist')
-    print(clf)
+    # clf = database.query('SELECT * FROM rental_hist')
+    # print(clf)
 
