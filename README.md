@@ -16,11 +16,11 @@ See all python files and their descriptions below.
 | **bikeSelect.py** | Module containing the `BikeSelect` class, which handles functions related to recommending bicycles. |
 | **database.py** | Module containing the `Database` class, which handles functions related to database handling, such as initialisation. |
 |**membershipManager.pyc**| Module containing functions to deal with memberships|
-|**generateRentals.py**| A program which generates the rental histroy data|
+|**data\generateRental_History.py**| A program which generates the rental histroy data|
 |----|----|
 | **database.db** | SQLite database holding information regarding inventory and rental history|
-| **Rental_History.txt** | Text file to be loaded into the SQLite database |
-| **Bicycle_info.txt** | Text file to be loaded into the SQLite database |
+| **data\Rental_History.txt** | Text file to be loaded into the SQLite database |
+| **data\Bicycle_info.txt** | Text file to be loaded into the SQLite database |
 | **members.txt** | Text file holding memberhsip information |
 |----|----|
 | **bike_images** | Folder containing .jpg images which are then loaded into the database.|

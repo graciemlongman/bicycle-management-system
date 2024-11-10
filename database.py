@@ -663,11 +663,9 @@ if __name__ == '__main__':
 
     #The function below can only be ran once. It cleans the data and loads it 
     #in to the database, then normlaises the data.
-    #database.load_data()
+    database.load_data()
 
     if database.test_data_not_none():
         if database.test_data_not_empty():
             if database.test_data_columns():
                 print('database initialised- all tests passed')
-
-    database.clear_db()
