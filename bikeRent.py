@@ -55,8 +55,8 @@ class BikeRent():
             return widgets.HTML(value="<span style='color: red;'>Please enter a valid date</span>")
         
         self.rental_days = int(rent_duration)
-        if rent_duration == 0:
-            return widgets.HTML(value="<span style='color: red;'>You must rent your bike for atleast one day</span>")
+        if self.rental_days == 0:
+            return widgets.HTML(value="<span style='color: red;'>You must rent your bike for at least one day</span>")
 
         if self._perform_checks(database):
             if self._update_db(database):
@@ -157,7 +157,7 @@ class BikeRent():
 
         # Run the rent method
         result = rent_instance.rent(database, member_id, bicycle_id, rent_date, rent_duration)
-
+        print(result)
         # Check that the result includes a DataFrame and a confirmation message widget
         assert isinstance(result, pd.DataFrame), "Expected result to be a DataFrame"
         assert not result.empty, "Expected rental details DataFrame to be non-empty"
@@ -179,7 +179,7 @@ class BikeRent():
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST9.db')
+    database = Database('database-TEST15.db')
     rent_instance = BikeRent()
 
     if rent_instance.test_rent_success():

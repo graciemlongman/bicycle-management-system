@@ -95,7 +95,7 @@ class BikeSelect():
         brands = overall_selected_df.groupby('brand').size()
         images = self.images[self.images.index.isin(brands.index)]
 
-        confirmation_message = widgets.HTML(value=f"<div style='font-weight:bold;'>Overall budget was £{self.budget}, with {allocation}% of the budget allocated to maintaining the current inventory</div>")
+        confirmation_message = widgets.HTML(value=f"<h3>Overall budget was £{self.budget}, with {allocation}% of the budget allocated to maintaining the current inventory</h3>")
         return confirmation_message, overall_selected_df, images
 
     def visualise(self):
@@ -122,7 +122,7 @@ class BikeSelect():
         cbar = ax.figure.colorbar(im,ax=ax, fraction=0.02, pad=0.04)
         cbar.set_label('Frequency of Usage')
 
-        ax.set_title('Rental frequency of bikes, by member and model', fontsize=20)
+        ax.set_title('Rental frequency of bikes since 2021, by member and model', fontsize=20)
         ax.set_xlabel('Model ID - corresponds to each unique bike (not to be confused with bicycle ID, which corresponds to each actual bike in the inventory)', 
                       fontsize=12)
         ax.set_ylabel('Member ID', fontsize = 12)
