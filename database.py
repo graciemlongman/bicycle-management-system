@@ -659,7 +659,7 @@ class Database:
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-test.db')
+    database = Database('database.db')
 
     #The function below can only be ran once. It cleans the data and loads it 
     #in to the database, then normlaises the data.
