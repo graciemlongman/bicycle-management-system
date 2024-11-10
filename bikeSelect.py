@@ -254,7 +254,7 @@ class BikeSelect():
         
         assert isinstance(confirm_message, widgets.HTML)
         assert isinstance(selected_df, pd.DataFrame)
-        assert isinstance(images, pd.Series)
+        assert isinstance(images, pd.DataFrame)
         assert not selected_df.empty, 'Expected bikes to have been selected'
 
         total_cost = selected_df['cost'].sum()
@@ -267,7 +267,7 @@ class BikeSelect():
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST15.db')
+    database = Database('database.db')
     select_instance = BikeSelect(database)
 
     if select_instance.test_select_success(budget=20000):

@@ -173,7 +173,7 @@ class BikeReturn():
     def test_return_success(self):
         '''Test that rent successfully processes a valid rental'''
         bicycle_id = 56
-        return_date = '2024/10/16'
+        return_date = datetime.strptime('2024/10/16','%Y/%m/%d').date()
         condition = 'damaged'
 
         test_rent_date = datetime.strptime('2024/10/01','%Y/%m/%d').date()
@@ -214,7 +214,7 @@ class BikeReturn():
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST9.db')
+    database = Database('database.db')
     return_instance = BikeReturn()
 
     if return_instance.test_return_success():

@@ -1,6 +1,8 @@
 # README
 ### PLEASE RUN MENU.IPYNB IN JUPYTER LAB. THE TEXTBOXES DO NOT WORK IN NOTEBOOK.
 
+### Note: database was initialised before submission so no need to do so in the notebook.
+
 A Bicycle Rental Mangement System.
 
 See all python files and their descriptions below.
@@ -59,6 +61,7 @@ The database is normalised to 3NF. It contains four tables, `bicycle_inventory`,
  1. Invalid rental date (just delete entry)
  2. Return date before rental date (swap dates back over)
  3. Missing dates (just delete entry)
+
 
 # Graphical User Interface Functionality 
 - The `Search` button requires the user to use the dropdown widgets to search by brand type or size. This displays a pd.DataFrame.

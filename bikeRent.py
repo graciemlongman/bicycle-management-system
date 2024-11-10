@@ -151,12 +151,12 @@ class BikeRent():
         '''Test that rent successfully processes a valid rental'''
         member_id = 1040
         bicycle_id = 54
-        rent_date = '2024/10/16'
+        rent_date = datetime.strptime('2024/10/16','%Y/%m/%d').date()
         rent_duration = 10
 
         # Run the rent method
         result = rent_instance.rent(database, member_id, bicycle_id, rent_date, rent_duration)
-        print(result)
+
         # Check that the result includes a DataFrame and a confirmation message widget
         assert isinstance(result, pd.DataFrame), "Expected result to be a DataFrame"
         assert not result.empty, "Expected rental details DataFrame to be non-empty"
@@ -178,7 +178,7 @@ class BikeRent():
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST15.db')
+    database = Database('database.db')
     rent_instance = BikeRent()
 
     if rent_instance.test_rent_success():

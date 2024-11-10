@@ -102,7 +102,7 @@ class BikeSearch():
 ###################################################################
 
 if __name__ == '__main__':
-    database = Database('database-TEST2.db')
+    database = Database('database.db')
     search_instance = BikeSearch()
 
     if BikeSearch.test_search_valid_input(search_instance, database):

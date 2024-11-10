@@ -661,7 +661,7 @@ class Database:
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST15.db')
+    database = Database('database.db')
     database.load_data()
 
     if database.test_data_not_none():
