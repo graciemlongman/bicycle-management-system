@@ -1,4 +1,4 @@
-#rental functions
+
 from database import *
 
 from datetime import date, timedelta
@@ -9,17 +9,6 @@ import numpy as np
 import ipywidgets as widgets
 
 import membershipManager as m
-
-##############################
-#          TO DO             #
-##############################
-# display message if budget too low
-# could return any leftover budget ?
-# return total cost?
-# display both dataframes? 
-# visualisations?
-#testing
-#docstrings
 
 class BikeSelect():
     '''
@@ -67,6 +56,7 @@ class BikeSelect():
         self.bicycle_models = pd.read_sql('SELECT * FROM bicycle_models', self.conn, index_col=['model_id'])
         self.inventory = pd.read_sql('SELECT * FROM bicycle_inventory', self.conn, index_col=['id'])
         self.history = pd.read_sql('SELECT * FROM rental_hist', self.conn, index_col=['id'] )
+        self.images = pd.read_sql('SELECT * FROM images', self.conn, index_col=['brand'])
     
     def select(self, allocation, budget):
         '''
@@ -79,7 +69,9 @@ class BikeSelect():
 
         Returns:
         ----------
+        Confirmation message
         Dataframe of bikes that should be selected for purchase
+        Pd series of image blobs
         '''
         self.budget = budget
 
@@ -89,20 +81,22 @@ class BikeSelect():
         #sorted by score with highest first, older, damaged bikes more likely to be replaced
         top10_models = self._sort_by_score_and_get_model_id(id_and_scores)
 
-        #inventory will be maintained for up to 70% of budget allocation
+        #inventory will be maintained up to budget allocation
         maintain_budget = (allocation/100) * self.budget
         maintain_df = self._select_bikes(budget=maintain_budget, model_ids = top10_models)
-
 
         #after budget has been allocated, rest goes to new bikes
         new_bike_budget = self.budget - maintain_budget
         new_models = self.bicycle_models[self.bicycle_models['instore'] == 'no']
 
-        new_df = self._select_bikes(budget=new_bike_budget, model_ids = [x-1 for x in new_models.index])
+        new_df = self._select_bikes(budget=new_bike_budget, model_ids = [x for x in new_models.index])
         
-        # confirmation = widgets.HTML(value=f'Overall budget was £{self.budget}, with {allocation}% of the budget allocated to maintaining the current inventory')
+        overall_selected_df = pd.concat([maintain_df, new_df])
+        brands = overall_selected_df.groupby('brand').size()
+        images = self.images[self.images.index.isin(brands.index)]
 
-        return widgets.HTML(value=f'Overall budget was £{self.budget}, with {allocation}% of the budget allocated to maintaining the current inventory'), pd.concat([maintain_df, new_df])
+        confirmation_message = widgets.HTML(value=f"<div style='font-weight:bold;'>Overall budget was £{self.budget}, with {allocation}% of the budget allocated to maintaining the current inventory</div>")
+        return confirmation_message, overall_selected_df, images
 
     def visualise(self):
         '''
@@ -142,7 +136,6 @@ class BikeSelect():
         fig.tight_layout()
         plt.show()
         
-
     
     ##############################################################
             ## Helper methods
@@ -156,8 +149,8 @@ class BikeSelect():
         Returns:
         ----------
         list of bike ids and corresponding score in the format
-        [[bike_id, score],
-        [bike_id, score],
+        [   [bike_id, score],
+            [bike_id, score],
         ....[bike_id, score]]
 
         '''
@@ -203,30 +196,79 @@ class BikeSelect():
 
     def _select_bikes(self, budget, model_ids):
         '''
-        Returns dataframe of selected bikes within budget
-        '''
-        cost=0 
-        bikes_selected=[]
-      
-        for m_id in model_ids:
-            cost += self.bicycle_models['cost'].iloc[m_id]
-            if cost <= budget:
-                bikes_selected.append(m_id)
+        Selects and returns a DataFrame of bicycle models within a specified 
+        budget. The function iterates over the list of model IDs and adds to 
+        the selection as long as the budget is not exceeded. Each model has a 
+        maximum allowed quantity proportional to its cost relative to the budget
+        to prevent overselection.
 
-        count = collections.Counter(bikes_selected)
-        bike_ids = [x-1 for x in count.keys()]
-        model_df = self.bicycle_models[['brand', 'type', 'size', 'cost', 'instore']].iloc[bike_ids]
-        model_df.insert(0, 'frequency', count.values())
+        Parameters:
+        -----------
+        budget (int): The maximum total cost allowed for the selected bikes.
+            
+        model_ids (list of int): A list of the top 10 models needed to be 
+        replaced in the case of mainting inventory, or a list of all models that
+        the store does not own in the case of expanding the inventory.
+
+        Returns:
+        --------
+        model_df : DataFrame
+            A DataFrame containing the selected bikes within the budget.
+            Each row represents a unique bike model.
+        '''
+        bikes_selected = []
+        total_cost = 0
+        bike_count = {m_id: 0 for m_id in model_ids}  
+
+        # Loop over model_ids to add bikes within the budget
+        for m_id in model_ids:
+            model_cost = self.bicycle_models['cost'].iloc[m_id - 1]
+
+            # Calculate the max allowed count for bike based on proportion of budget
+            max_count_for_bike = max(1, budget // (4 * model_cost)) 
+
+            # While loop to add bikes within the budget
+            while total_cost <= budget:
+                if (model_cost + total_cost) <= budget and bike_count[m_id] < max_count_for_bike:
+                    bikes_selected.append(m_id)
+                    total_cost += model_cost
+                    bike_count[m_id] += 1  
+                else:
+                    break
+
+        count_bikes = collections.Counter(bikes_selected)
+        model_ids = [x-1 for x in count_bikes.keys()]
+        model_df = self.bicycle_models[['brand', 'type', 'size', 'cost', 'instore']].iloc[model_ids]
+        model_df.insert(0, 'frequency', count_bikes.values())
         
         return model_df
+    
+    #####################################################################
+        ## test
+    ####################################################################
+    def test_select_success(self, budget):
+        '''Test select works'''
 
+        confirm_message, selected_df, images = select_instance.select(allocation=100, 
+                                                              budget=budget)
+        
+        assert isinstance(confirm_message, widgets.HTML)
+        assert isinstance(selected_df, pd.DataFrame)
+        assert isinstance(images, pd.Series)
+        assert not selected_df.empty, 'Expected bikes to have been selected'
+
+        total_cost = selected_df['cost'].sum()
+        assert total_cost <= budget, f"Total cost {total_cost} exceeds budget"
+
+        return True
 
 ############################################################################
     #### MAIN
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database9.db')
+    database = Database('database-TEST15.db')
+    select_instance = BikeSelect(database)
 
-    #BikeSelect(database).select(database, allocation=70, budget=20000)
-    BikeSelect(database).visualise()
+    if select_instance.test_select_success(budget=20000):
+        print('Test select passed')

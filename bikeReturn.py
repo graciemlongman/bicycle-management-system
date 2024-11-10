@@ -4,13 +4,6 @@ from database import *
 from datetime import datetime
 import ipywidgets as widgets
 
-##############################
-#          TO DO             #
-##############################
-# error message
-
-#testing
-#docstrings
 
 class BikeReturn():
     '''
@@ -52,7 +45,7 @@ class BikeReturn():
 
             return self._confirmation_message(charge)
         else:
-            return widgets.HTML(value='Your bike is not ready to be returned.')
+            return widgets.HTML(value="<span style='color: red;'>Your bike is not ready to be returned.</span>")
 
     
     ##############################################################
@@ -159,20 +152,63 @@ class BikeReturn():
         _calculate_charge function
         '''
         success = widgets.HTML(value=f'''<h4>You have successfully returned your bike in {self.condition} condition!</h4>''')
-
         expected = widgets.HTML(value=f'Expected charge: £{charge[0]}')
+        line = widgets.HTML(value='__________________________________')
+        total = widgets.HTML(value=f'<h4>Total charge: £{charge[3]}</h4>')    
+
+        messages=[success,expected,line,total]
         
         if charge[1] != 0:
-            late = widgets.HTML(value=f'Late charge: £{charge[1]}')
+            late = widgets.HTML(value=f"<span style='color: red;'>Late charge: £{charge[1]}</span>")
+            messages.insert(2, late)
         if charge[2] != 0:
-            damage=widgets.HTML(value=f'Damage charge: £{charge[2]}')
+            damage=widgets.HTML(value=f"<span style='color: red;'>Damage charge: £{charge[2]}</span>")
+            messages.insert(2,damage)
+       
 
-        line = widgets.HTML(value='__________________________________')
-        total = widgets.HTML(value=f'<h4>Total charge: £{charge[3]}</h4>')
+        return widgets.VBox(messages)
+    
+    #####################################################################
+        ## test
+    ####################################################################
+    
+    def test_return_success(self):
+        '''Test that rent successfully processes a valid rental'''
+        bicycle_id = 56
+        return_date = '2024/10/16'
+        condition = 'damaged'
 
-        confirmation_box = widgets.VBox([success,expected,late,damage,line,total])
+        test_rent_date = datetime.strptime('2024/10/01','%Y/%m/%d').date()
+        test_return_date = datetime.strptime('2021/10/06','%Y/%m/%d').date()
 
-        return confirmation_box
+        #make the bike 'rented'
+        database.alter_row(table='bicycle_inventory', 
+                       col = 'status', new_col_value='rented', 
+                       key='id', key_value=bicycle_id)
+        
+        database.add_row(table='rental_hist (id, rental_date, return_date, member_id)', 
+                        values=(bicycle_id, test_rent_date, test_return_date, '1006'))
+
+        # Run the rent method
+        result = return_instance.return_bike(database, bicycle_id, return_date, condition)
+
+        # Check that the result is a confirmation message widget
+        assert isinstance(result, widgets.VBox), "Expected result to be a widget"
+
+        #check database was altered
+        status = database.query(f'SELECT status FROM bicycle_inventory WHERE id={bicycle_id}')[0][0]
+
+        assert status =='under maintenance', f"Expected status to be 'under maintenance' but got {status}"
+        
+        database.alter_row(table='bicycle_inventory', 
+                       col = 'status', new_col_value='rented', 
+                       key='id', key_value=bicycle_id)
+            
+        database.delete_row(table='rental_hist', key = 'log', 
+                            key_value = '(SELECT MAX(log) FROM rental_hist)')
+
+        return True
+
 
     
 ###########################################################################
@@ -180,9 +216,8 @@ class BikeReturn():
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database6.db')
+    database = Database('database-TEST9.db')
+    return_instance = BikeReturn()
 
-    BikeReturn().return_bike(database, bicycle_id = 10, actual_return_date=2024/10/30, condition='Damaged')
-    s = database.query('SELECT * FROM rental_hist')
-
-    print(s)
+    if return_instance.test_return_success():
+        print('Return test passed')

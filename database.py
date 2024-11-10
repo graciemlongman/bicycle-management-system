@@ -1,14 +1,13 @@
 # Database Operations
 import sqlite3
+
 from datetime import datetime, date
-import random
 
-##############################
-#          TO DO             #
-##############################
-# Data base cleaning - parsing dates etc
+import random #generate bicycle costs within a range
 
-# testing
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import pickle
 
 class Database:
     '''
@@ -33,6 +32,9 @@ class Database:
         bicycle_models - non variable attributes to each unique bike model
         bicycle_inventory - variable (condition/status) attributes for
             each of the 100 bikes in stock
+    
+    - load_data()
+        Ties together all steps when initialising database
 
     - read_line(self, col, table, id, member_id = None) -> list of tuples
         Given bicycle id read line from database
@@ -51,11 +53,16 @@ class Database:
 
     - alter_row(self, table, col, new_col_value, key, key_value) -> bool
         Alter row in table. Returns true if complete
-
+    
+    - delete_row(table, key, key_value) -> bool
+        Delete row in table. Return true if complete
+    
     - clear_db(self)
         Clear entire database and close sqlite connection.
+    
 
     HELPER FUNCTIONS:
+
     - _clean(self, table_name, line) -> list
 
     - _parse_weekly_rate(self, line) -> list 
@@ -85,7 +92,7 @@ class Database:
             print(f'Connected to {self.db_name}')
         except sqlite3.Error as e:
             print(f'Error connecting to database: {e}')
-    
+
     def create_table(self, table_name):
         '''Create table
            Args:
@@ -166,23 +173,26 @@ class Database:
             Assign each bike in the inventory its model_id
             
             Create table bicycle_inventory, containing every bike in shop rather than each unique model
-            
+        
             Drop old table bicycles
-        '''
-        try:
-            self.table_names.append('bicycle_models')
-            self.table_names.append('bicycle_inventory')
-            
-            #get data to populate bicycle_models
-            bicycle_costs = random.sample(range(500,3000), 33)
-            ids = [i for i in range(1,34)]
-            instore = ['yes' for i in range(1,34)]
-            unique_models = self.cursor.execute('SELECT DISTINCT brand, type, size, daily_rental_rate, weekly_rental_rate FROM bicycles;').fetchall()
-            self.connection.commit()
 
-            #create table
+            Add primary key to rental history
+
+            Create table images - stores an image per brand of bike
+        '''
+        self.table_names.append('bicycle_models')
+        self.table_names.append('bicycle_inventory')
+        self.table_names.append('images')
+        
+        #get data to populate bicycle_models
+        bicycle_costs = random.sample(range(500,3000), 33)
+        unique_models = self.cursor.execute('SELECT DISTINCT brand, type, size, daily_rental_rate, weekly_rental_rate FROM bicycles;').fetchall()
+        self.connection.commit()
+
+        #create table models
+        try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS bicycle_models (
-                    model_id INTEGER PRIMARY KEY,
+                    model_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     brand VARCHAR(20),
                     type VARCHAR(20),
                     size VARCHAR(20),
@@ -191,46 +201,131 @@ class Database:
                     cost INTEGER,
                     instore VARCHAR(20)); ''')
             self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Error creating models table {e}')
 
-            #populate table
-            for model_id, cost, (brand, type, size, daily_r, weekly_r), own in zip(ids, bicycle_costs, unique_models, instore):
-                self.cursor.execute('''INSERT INTO bicycle_models (model_id, brand, type, size, daily_rental_rate, weekly_rental_rate, cost, instore)
-                        VALUES (?,?,?,?,?,?,?,?)''', (model_id, brand, type, size, daily_r, weekly_r, cost, own))
+        #populate models table
+        try:
+            for cost, (brand, type, size, daily_r, weekly_r) in zip(bicycle_costs, unique_models):
+                self.cursor.execute('''INSERT INTO bicycle_models (brand, type, size, daily_rental_rate, weekly_rental_rate, cost, instore)
+                        VALUES (?,?,?,?,?,?,?)''', (brand, type, size, daily_r, weekly_r, cost, 'yes'))
             self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Error populating table {e}')
 
-
-            #now match the model id from above to each bike in the inventory
-            match_model_id = []
-            bicycles = database.query('SELECT brand, type, size FROM bicycles')
-
-            for bike in bicycles:
-                model_id = database.query(f"SELECT model_id FROM bicycle_models WHERE brand='{bike[0]}' AND type='{bike[1]}' AND size='{bike[2]}'")
-                match_model_id.append(model_id)
-
-            #create inventory table
+        #-------------------------------------
+        #create inventory table
+        try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS bicycle_inventory (
-                    id INTEGER,
+                    id INTEGER PRIMARY KEY,
                     model_id INTEGER,
                     purchase_date DATE,
                     condition VARCHAR(20),
                     status VARCHAR(20));''')
             self.connection.commit()
-
-            #populate
-            self.cursor.execute('''INSERT INTO bicycle_inventory (id, purchase_date, condition, status)
-                    SELECT id, purchase_date, condition, status
-                    FROM bicycles;''')
-
-            for idx , model_id in enumerate(match_model_id):
-                self.cursor.execute(f'''UPDATE bicycle_inventory SET model_id=?
-                        WHERE id=?;''', (model_id[0][0], idx+1))
-
-            self.cursor.execute('''DROP TABLE IF EXISTS bicycles''')
- 
-            self.connection.commit()
-
         except sqlite3.Error as e:
-            print(f'Error normalising database: {e}')
+            print(f'Error creating table \'bicycle_inventory\' {e}')
+
+        # copy over data which can be copied into table
+        try:
+            self.cursor.execute('''INSERT INTO bicycle_inventory (id, purchase_date, condition, status)
+                SELECT id, purchase_date, condition, status
+                FROM bicycles;''')
+        except sqlite3.Error as e:
+            print(f'Error copying data into table \'bicycle_inventory\' {e}')
+        
+        #now match the model id from above to each bike in the inventory
+        match_model_id = []
+        bicycles = self.query('SELECT brand, type, size FROM bicycles')
+
+        for bike in bicycles:
+            model_id = self.query(f"SELECT model_id FROM bicycle_models WHERE brand='{bike[0]}' AND type='{bike[1]}' AND size='{bike[2]}'")
+            match_model_id.append(model_id)
+
+        for idx , model_id in enumerate(match_model_id):
+            self.cursor.execute(f'''UPDATE bicycle_inventory SET model_id=?
+                    WHERE id=?;''', (model_id[0][0], idx+1))
+        
+        #no longer have need for bicycle table
+        self.cursor.execute('''DROP TABLE IF EXISTS bicycles''')
+        self.connection.commit()     
+
+        #---------------------
+        try:
+            #add primary key to rental history table
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS new_rental_hist (
+                                        log INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        id INTEGER,
+                                        rental_date DATE,
+                                        return_date DATE,
+                                        member_id INTEGER);''')
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Error creating table: {e}')
+
+        try:
+            #copy data over into new_rental_hist
+            self.cursor.execute('''INSERT INTO new_rental_hist (id, rental_date, return_date, member_id)
+                                SELECT id, rental_date, return_date, member_id FROM rental_hist;''')
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Error copying data over: {e}')
+        
+        #drop table and rename
+        try:
+            self.cursor.execute('''DROP TABLE IF EXISTS rental_hist''')
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Error dropping table: {e}')
+
+        self.cursor.execute('''ALTER TABLE new_rental_hist RENAME TO rental_hist''')
+        self.connection.commit()
+
+        #------------------
+        try:
+            #create image table
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS images (
+                                    brand VARCHAR(20) PRIMARY KEY,
+                                    photo BLOB);''')
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f'Failed to create images table')
+        
+        photo_dict = self._get_dict_of_pickled_photos()
+        
+        #populate images table
+        for brand, photo in photo_dict.items():
+            try:
+                self.cursor.execute('''INSERT INTO images (brand, photo)
+                                    VALUES (?,?)''', (brand, photo))
+                self.connection.commit()
+            except sqlite3.Error as e:
+                print(f'Failed to add data to images: {e}')
+
+        print('Database normalised successfully\n')
+
+    def load_data(self):
+        '''
+        Ties together all steps involving initialising the database.
+        - Create tables to store text files
+        - Clean and read in data from text files
+        - Normalise database
+        '''
+        tables={'rental_hist': 'Rental_History.txt', 'bicycles': 'Bicycle_info.txt'}
+        for name, path in tables.items():
+            self.create_table(name)
+            self.clean_load_files_to_table(name, path)
+
+        self.normalise_database()
+
+        # add bikes used to expand inventory in select module
+        table = 'bicycle_models (brand, type, size, daily_rental_rate, weekly_rental_rate, cost, instore)'
+
+        self.add_row(table=table, values=('trek','electric bike','medium','33/day','NULL',2500,'no'))
+        self.add_row(table=table, values=('giant','electric bike','medium','30/day','NULL',1500,'no'))
+        self.add_row(table=table, values=('cannondale','electric bike','medium','34/day','NULL',2600,'no'))
+        self.add_row(table=table, values=('specialized','road bike','medium','35/day','NULL',3500,'no'))
+        self.add_row(table=table, values=('bianchi','electric bike','medium','30/day','NULL',1000,'no'))
 
     
     #############################################################
@@ -347,6 +442,20 @@ class Database:
             print(f'Error altering database: {e}')
             return False
 
+    def delete_row(self, table, key, key_value):
+        '''delete line from database'''
+        try:
+            self.cursor.execute(f'''DELETE FROM {table}
+                                    WHERE {key}={key_value}''')
+            self.connection.commit()
+            
+            print(f'Successfully deleted row from table \'{table}\'.')
+            return True
+        
+        except sqlite3.Error as e:
+            print(f'Error deleting row: {e}')
+            return False
+
     #############################################################
             ## Clear database
     
@@ -369,7 +478,6 @@ class Database:
             except sqlite3.Error as e:
                 print(f'Error clearing database: {e}')
 
-
     ##################################################################
             ## helper methods
     #################################################################
@@ -386,16 +494,16 @@ class Database:
         #get a list of inputs
         #convert ; into comma (separate weekly/daily rates)
         inputs_list = line.strip().replace(';',',').split(',')
+        inputs_list = [x.lower() for x in inputs_list]
         
         #add null value for bikes with no weekly rate
         if table_name == 'bicycles':
             inputs_list = self._extract_weekly_rate(inputs_list)
             inputs_list = self._replace_missing_brand(inputs_list)
             inputs_list[4] = inputs_list[4].replace('£', '/day')
-            inputs_list[5] = inputs_list[5].replace('/', '-')
         else:
-            inputs_list[1] = inputs_list[1].replace('/', '-')
-            inputs_list[2] = inputs_list[2].replace('/', '-')
+            inputs_list[1] = inputs_list[1].replace('-', '/')
+            inputs_list[2] = inputs_list[2].replace('-', '/')
         
         inputs_list = self._parse_dates(inputs_list, table_name)
 
@@ -440,25 +548,24 @@ class Database:
         x (str): each item of the list as looped through in `_clean`
         '''
         if table_name == 'bicycles':
-            x = inputs_list[5]
+            x = inputs_list[6]
             try:
-                x.replace('/','-')
                 #convert dates to date objects
-                x = datetime.strptime(x, '%Y/%m/%d')
-
-                inputs_list[5] = x if x <= date.today() else None
+                x = datetime.strptime(x, '%d/%m/%Y').date()
+    
+                inputs_list[6] = x if x <= date.today() else None
             
             #if invalid date format - reassign date to start of business
             except ValueError:
-                inputs_list[5] = datetime.strptime('2021/01/01','%Y/%m/%d')
+                inputs_list[6] = datetime.strptime('2021/01/01','%Y/%m/%d').date()
 
         if table_name == 'rental_hist':
             x = inputs_list[1]
             y = inputs_list[2]
             try:
                 #convert dates to date objects
-                rent_date = datetime.strptime(x, '%Y/%m/%d')
-                return_date = datetime.strptime(y, '%Y/%m/%d')
+                rent_date = datetime.strptime(x, '%Y/%m/%d').date()
+                return_date = datetime.strptime(y, '%Y/%m/%d').date()
 
                 #check return date is not before rent date
                 #if they are, swap them
@@ -467,15 +574,86 @@ class Database:
                 
                 inputs_list[1] = rent_date if rent_date <= date.today() else None
                 inputs_list[2] = return_date if return_date <= date.today() else None
-            
+                
             #if invalid date format
-            except ValueError:
+            except ValueError as e:
                 return None
         
         return inputs_list
   
-    
+    def _get_dict_of_pickled_photos(self):
+        '''
+        Reads in and pickles images to then be inserted to df
+        Returns:
+        -----------
+        dict of {brand:img} of photos
+        '''
+        brands = ['bianchi', 'cannondale', 'giant', 'specialized', 'trek']
+        images = {}
+        
+        for brand in brands:
+            try:
+                img = mpimg.imread(f'bike_images/{brand}-bike.jpg')
+                images[brand] = pickle.dumps(img)
+            except FileNotFoundError:
+                print(f"Image for {brand} not found.")
+                images[brand] = None 
 
+        return images
+
+    ######################################################################
+            ## tests
+    #####################################################################
+    def test_data_not_none(self):
+        '''test data not none'''
+        if database is not None:
+            return True
+        else:
+            print('Error:')
+    
+    def test_data_not_empty(self):
+        '''Test each normalized table is not empty'''
+
+        # Query each table and fetch all rows
+        self.inventory = self.query('SELECT * FROM bicycle_inventory')
+        self.models = self.query('SELECT * FROM bicycle_models')
+        self.history = self.query('SELECT * FROM rental_hist')
+        self.images = self.query('SELECT * FROM images')
+
+        # Check if each table has data
+        if not self.inventory:
+            print("Error: No data in table 'bicycle_inventory'")
+            return False
+        if not self.models:
+            print("Error: No data in table 'bicycle_models'")
+            return False
+        if not self.history:
+            print("Error: No data in table 'rental_hist'")
+            return False
+        if not self.images:
+            print('Error: no data in table images')
+            return False
+        # All tables are non-empty
+        return True
+
+    def test_data_columns(self):
+        '''Test each table has the correct columns as expected'''
+
+        expected_columns = { 
+        'rental_hist' : ['log', 'id', 'rental_date', 'return_date', 'member_id'],
+        'bicycle_inventory' : ['id', 'model_id', 'purchase_date', 'condition', 'status'],
+        'bicycle_models' : ['model_id', 'brand', 'type', 'size', 'daily_rental_rate', 'weekly_rental_rate', 'cost', 'instore'],
+        'images' : ['brand', 'photo']}
+
+        for table, expected_names in expected_columns.items():
+            info = self.query(f'PRAGMA table_info({table})')
+            col_names = [item[1] for item in info]
+
+            message = f'in {table}, expected {expected_names}, got {col_names}'
+            assert col_names == expected_names, message
+
+        return True
+    
 ###########################################################################
 ###########################################################################
     #### MAIN
@@ -483,28 +661,11 @@ class Database:
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database-TEST.db')
+    database = Database('database-TEST15.db')
+    database.load_data()
 
-    tables={'rental_hist': 'Rental_History.txt', 'bicycles': 'Bicycle_info.txt'}
-    for name, path in tables.items():
-        database.create_table(name)
-        database.clean_load_files_to_table(name, path)
-
-    # database.normalise_database()
-
-    # database.add_row(table='bicycle_models', values=(34, 'Trek','Electric Bike','Medium','33-day','null',2500,'no'))
-    # database.add_row(table='bicycle_models', values=(35, 'Giant','Electric Bike','Medium','30-day','null',1500,'no'))
-    # database.add_row(table='bicycle_models', values=(36, 'Cannondale','Electric Bike','Medium','34-day','null',2600,'no'))
-    # database.add_row(table='bicycle_models', values=(37, 'Specialized','Electric Bike','Medium','35-day','null',3500,'no'))
-    # database.add_row(table='bicycle_models', values=(38, 'Bianchi','Electric Bike','Medium','30-day','null',1000,'no'))
-
-        
-    # dets = database.query('SELECT * FROM bicycle_models')
-    # print(dets)
-
-    # spa = database.query('SELECT * FROM bicycle_inventory')
-    # print(spa)
-
-    # clf = database.query('SELECT * FROM rental_hist')
-    # print(clf)
+    if database.test_data_not_none():
+        if database.test_data_not_empty():
+            if database.test_data_columns():
+                print('database initialised- all tests passed')
 

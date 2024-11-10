@@ -6,13 +6,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import ipywidgets as widgets
 
-
-##############################
-#          TO DO             #
-##############################
-# also add a bloody column for expected return
-# testing
-
 class BikeRent():
     ''' 
     A class containing functions that allow the store manager to 
@@ -56,19 +49,20 @@ class BikeRent():
         self.b_id = bicycle_id
 
         #get dates
-        if len(rent_date_)<1:
-            return widgets.HTML(value='Please enter a valid date')
-
-        self.rent_date = datetime.strptime(rent_date_, '%Y/%m/%d').date()
+        try:
+            self.rent_date = datetime.strptime(rent_date_, '%Y/%m/%d').date()
+        except ValueError:
+            return widgets.HTML(value="<span style='color: red;'>Please enter a valid date</span>")
+        
         self.rental_days = int(rent_duration)
+        if rent_duration == 0:
+            return widgets.HTML(value="<span style='color: red;'>You must rent your bike for atleast one day</span>")
 
         if self._perform_checks(database):
-
             if self._update_db(database):
-
                 return self._confirmation_message(database)
         else:
-            return widgets.HTML(value='You have reached your rental limit or entered incorrect ID')
+            return widgets.HTML(value="<span style='color: red;'>You have reached your rental limit or entered incorrect ID</span>")
 
     ##########################################################
         ## Helper methods
@@ -120,7 +114,7 @@ class BikeRent():
                            key='id', key_value=self.b_id)
 
         #insert into rental history
-        inserted = database.add_row(table='rental_hist', 
+        inserted = database.add_row(table='rental_hist (id, rental_date, return_date, member_id)', 
                                     values=(self.b_id, self.rent_date, 
                                             return_date, self.m_id))
 
@@ -147,19 +141,47 @@ class BikeRent():
         conn = database.connection
         details = pd.read_sql(query, conn, index_col = ['id'])
 
-        print(30*'*', f'\nSuccessful Rental!')
-
         if details is not None:
-            return details 
+            return details
+        
+    #####################################################################
+        ## test
+    ####################################################################
+    
+    def test_rent_success(self):
+        '''Test that rent successfully processes a valid rental'''
+        member_id = 1040
+        bicycle_id = 54
+        rent_date = '2024/10/16'
+        rent_duration = 10
 
+        # Run the rent method
+        result = rent_instance.rent(database, member_id, bicycle_id, rent_date, rent_duration)
+
+        # Check that the result includes a DataFrame and a confirmation message widget
+        assert isinstance(result, pd.DataFrame), "Expected result to be a DataFrame"
+        assert not result.empty, "Expected rental details DataFrame to be non-empty"
+
+        #check database was altered
+        status = database.query(f'SELECT status FROM bicycle_inventory WHERE id={bicycle_id}')[0][0]
+        assert status == 'rented', f"Expected status to be 'rented', but got {status}"
+
+        #revert changes
+        database.alter_row(table='bicycle_inventory', col = 'status',
+                            new_col_value='available', key='id', 
+                            key_value=bicycle_id)
+        database.delete_row(table='rental_hist', key = 'log', 
+                        key_value = '(SELECT MAX(log) FROM rental_hist)')
+        return True
 
 ############################################################################
     #### MAIN
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database6.db')
+    database = Database('database-TEST9.db')
+    rent_instance = BikeRent()
 
-    #help(m)
+    if rent_instance.test_rent_success():
+        print('Test rent success passed')
 
-    BikeRent().rent(database, member_id = 1001, bicycle_id = 10, rent_date_='2024/10/16', rent_duration=10)

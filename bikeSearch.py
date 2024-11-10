@@ -4,15 +4,6 @@ import pandas as pd
 import ipywidgets as widgets
 
 
-##############################
-#          TO DO             #
-##############################
-# only show available bikes?
-# images later
-
-#testing
-#docstrings
-
 class BikeSearch():
     '''
     A class handling search functions which allow the store manager
@@ -55,10 +46,10 @@ class BikeSearch():
         #display relevant info
         display_df = searched_df[display]
 
-        if len(display_df) != 0:
+        if len(display_df) > 0:
             return display_df
         else:
-            return widgets.HTML(value=f'No items match your search for {term} = {parameter}')
+            return widgets.HTML(value=f"<span style='color: red;'>No items match your search for {term} = {parameter}</span>")
         
     ##################################################################
             ## helper methods
@@ -70,8 +61,10 @@ class BikeSearch():
         '''
         try:
             conn = database.connection
-            bicycles_df = pd.read_sql('SELECT * FROM bicycle_models bm INNER JOIN bicycle_inventory bi ON bm.model_id = bi.model_id', con=conn, 
-            index_col = ['id'])
+            bicycles_df = pd.read_sql('''SELECT * FROM bicycle_models bm 
+                                      INNER JOIN bicycle_inventory bi 
+                                      ON bm.model_id = bi.model_id''', con=conn, 
+                                      index_col = ['id'])
             return bicycles_df
         
         except Exception as e:
@@ -91,10 +84,26 @@ class BikeSearch():
         elif term == 'size':
             return ['status', 'brand','type', 'daily_rental_rate', 'weekly_rental_rate']
         
+    ##############################################################
+        ## tests
+    #############################################################
+    
+    def test_search_valid_input(self, database):
+        '''Test search returns correct dataframe for a valid term and parameter'''
+        term = 'type'
+        parameter = 'mountain bike'
+        result = self.search(database, term, parameter)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) > 0
+        
+        return True
 
 ###################################################################
 
 if __name__ == '__main__':
-    database = Database('database9.db')
-    
-    BikeSearch().search(database, term = 'type', parameter = 'mountain bike')
+    database = Database('database-TEST2.db')
+    search_instance = BikeSearch()
+
+    if BikeSearch.test_search_valid_input(search_instance, database):
+        print('Test search valid input passed')
