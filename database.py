@@ -158,7 +158,7 @@ class Database:
                         pass
 
                 self.connection.commit()
-            print(f'{file_path} loaded into {table_name} successfully')
+            print(f'{file_path} loaded into {table_name} successfully\n')
 
         except sqlite3.Error as e:
             print(f'Error loading files to table: {e}')

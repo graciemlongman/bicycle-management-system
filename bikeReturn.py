@@ -108,15 +108,13 @@ class BikeReturn():
         rent_date = database.read_line(col='rental_date', table='rental_hist', 
                                                     id=self.b_id)[0][0]
         
-        actual_return_ = datetime.strptime(self.actual_return,'%Y/%m/%d').date()
-
         normal_daily_rate = int(database.query(f'''SELECT daily_rental_rate 
                                                FROM bicycle_models bm
                                                INNER JOIN bicycle_inventory bi ON bm.model_id = bi.model_id
                                                WHERE bi.id = {self.b_id} ''')[0][0][0:2])
 
-        days_rented = (actual_return_ - rent_date).days
-        days_overdue = max((actual_return_ - expected_return_date).days,0)
+        days_rented = (self.actual_return - rent_date).days
+        days_overdue = max((self.actual_return - expected_return_date).days,0)
 
         #Charge calculation formulas:::::
         if days_rented % 7 == 0:

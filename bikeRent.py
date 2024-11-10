@@ -49,10 +49,9 @@ class BikeRent():
         self.b_id = bicycle_id
 
         #get dates
-        try:
-            self.rent_date = datetime.strptime(rent_date_, '%Y/%m/%d').date()
-        except ValueError:
-            return widgets.HTML(value="<span style='color: red;'>Please enter a valid date</span>")
+        self.rent_date = rent_date_
+        if self.rent_date is None:
+         return widgets.HTML(value="<span style='color: red;'>Please enter a valid date</span>")
         
         self.rental_days = int(rent_duration)
         if self.rental_days == 0:
@@ -136,7 +135,7 @@ class BikeRent():
                     FROM bicycle_inventory bi 
                     INNER JOIN rental_hist r ON bi.id = r.id
                     INNER JOIN bicycle_models bm ON bi.model_id = bm.model_id
-                    WHERE bi.id = {self.b_id} AND r.member_id = {self.m_id}
+                    WHERE r.log = ((SELECT MAX(log) FROM rental_hist))
                         ''')
         conn = database.connection
         details = pd.read_sql(query, conn, index_col = ['id'])
