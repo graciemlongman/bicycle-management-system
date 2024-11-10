@@ -1,10 +1,7 @@
 # Database Operations
 import sqlite3
-
 from datetime import datetime, date
-
-import random #generate bicycle costs within a range
-
+import random
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pickle
@@ -311,7 +308,7 @@ class Database:
         - Clean and read in data from text files
         - Normalise database
         '''
-        tables={'rental_hist': 'Rental_History.txt', 'bicycles': 'Bicycle_info.txt'}
+        tables={'rental_hist': 'data\Rental_History.txt', 'bicycles': 'data\Bicycle_info.txt'}
         for name, path in tables.items():
             self.create_table(name)
             self.clean_load_files_to_table(name, path)
@@ -654,6 +651,7 @@ class Database:
 
         return True
     
+
 ###########################################################################
 ###########################################################################
     #### MAIN
@@ -661,11 +659,15 @@ class Database:
 ###########################################################################
     
 if __name__ == '__main__':
-    database = Database('database.db')
-    database.load_data()
+    database = Database('database-test.db')
+
+    #The function below can only be ran once. It cleans the data and loads it 
+    #in to the database, then normlaises the data.
+    #database.load_data()
 
     if database.test_data_not_none():
         if database.test_data_not_empty():
             if database.test_data_columns():
                 print('database initialised- all tests passed')
 
+    database.clear_db()

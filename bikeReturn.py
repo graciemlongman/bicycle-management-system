@@ -195,7 +195,6 @@ class BikeReturn():
 
         #check database was altered
         status = database.query(f'SELECT status FROM bicycle_inventory WHERE id={bicycle_id}')[0][0]
-
         assert status =='under maintenance', f"Expected status to be 'under maintenance' but got {status}"
         
         database.alter_row(table='bicycle_inventory', 

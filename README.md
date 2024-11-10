@@ -69,7 +69,7 @@ The database is normalised to 3NF. It contains four tables, `bicycle_inventory`,
 - The `Rent` button requires the user to input their member ID, bicycle ID, rental date (using a widget.DatePicker), and the number of days they would like to rent for. 
     - This returns a dataframe and confirmation message. Incorrect inputs (e.g., blank date) will display error messages to the user in red.
 - The `Return` button requires the user to input their bicycle ID, return date (using a widget.DatePicker) and the bicycle condition.
-    - This returns a HTML confirmation message displaying the price of charges, where if late/damage charges are applicable they will be displayed in red.
+    - This returns a HTML confirmation message displaying the price of charges, where if late/damage charges are applicable they will be displayed in red. Damage charges incur if the condition is marked as 'damaged'
 - The `Select` button allows the user to user sliders to choose a budget and decide how it should be allocated - either towards maintaining inventory or expanding.
     - This returns a dataframe of recommended bikes and the corresponding images below.
 - The `Visualise` button displays a heatmap of rental frequency, by member ID and each unique bike model. It also displays the model_ID key below the plot. 
