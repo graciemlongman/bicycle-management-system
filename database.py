@@ -31,7 +31,9 @@ class Database:
             - 'images'
     
     - load_data()
-        Ties together all steps when initialising database
+        Ties together all steps when initialising database: create_table, 
+        clean_load_files_to_table, normalise_database. Also adds 5 bikes to 
+        bicycle_models table, used for recommendations to expanding inventory.
 
     - read_line(self, col, table, id, member_id = None) -> list of tuples
         Given bicycle id read line from database
@@ -67,6 +69,10 @@ class Database:
 
     - _parse_date(self, x) -> date
         Parse dates to the correct formats
+    
+    - _get_dict_of_pickled_photos() -> dict
+        returns dict of {brand:img} of photos
+
 
     '''
 
@@ -583,7 +589,7 @@ class Database:
         Reads in and pickles images to then be inserted to df
         Returns:
         -----------
-        dict of {brand:img} of photos
+        dict of {brand:image} of photos
         '''
         brands = ['bianchi', 'cannondale', 'giant', 'specialized', 'trek']
         images = {}
