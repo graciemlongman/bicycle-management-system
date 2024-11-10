@@ -24,11 +24,11 @@ class Database:
         Read in text file line by line, clean each line and insert to database
 
     - normalise_database(self)
-        This function adjusts the structure of the database to 3NF
-        rental_hist - history log
-        bicycle_models - non variable attributes to each unique bike model
-        bicycle_inventory - variable (condition/status) attributes for
-            each of the 100 bikes in stock
+        This function adjusts the structure of the database to 3NF. See ReadMe.
+            - 'rental_hist'
+            - 'bicycle_models'
+            - 'bicycle_inventory'
+            - 'images'
     
     - load_data()
         Ties together all steps when initialising database
@@ -663,7 +663,7 @@ if __name__ == '__main__':
 
     #The function below can only be ran once. It cleans the data and loads it 
     #in to the database, then normlaises the data.
-    database.load_data()
+    #database.load_data()
 
     if database.test_data_not_none():
         if database.test_data_not_empty():
