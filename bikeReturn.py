@@ -123,8 +123,14 @@ class BikeReturn():
                                                INNER JOIN bicycle_inventory bi ON bm.model_id = bi.model_id
                                                WHERE bi.id = {self.b_id} ''')[0][0][0:2])
             normal_fee = days_rented * weekly_rate
+            if days_rented <= 0:
+                #bike returned early 
+                normal_fee=((expected_return_date - rent_date).days)*weekly_rate
         else:
             normal_fee = days_rented * normal_daily_rate
+            if days_rented <= 0:
+                #bike returned early 
+                normal_fee=((expected_return_date - rent_date).days)*weekly_rate
         
         if days_overdue == 0:
             late_fee = 0
