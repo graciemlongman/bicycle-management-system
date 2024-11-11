@@ -1,5 +1,4 @@
 # README
-### PLEASE RUN MENU.IPYNB IN JUPYTER LAB. THE TEXTBOXES DO NOT WORK IN NOTEBOOK.
 
 ### Note: database was initialised before submission so no need to do so in the notebook.
 
